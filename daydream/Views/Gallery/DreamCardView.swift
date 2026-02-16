@@ -3,6 +3,8 @@ import SwiftUI
 struct DreamCardView: View {
     let dream: Dream
 
+    @State private var appeared = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Dream image
@@ -18,7 +20,7 @@ struct DreamCardView: View {
                 // Placeholder gradient based on emotion
                 RoundedRectangle(cornerRadius: 0)
                     .fill(dream.emotion.linearGradient)
-                    .frame(height: CGFloat.random(in: 120...200))
+                    .frame(height: CGFloat(120 + abs(dream.id.hashValue % 80)))
                     .overlay {
                         Image(systemName: "moon.stars")
                             .font(.system(size: 32))
@@ -58,5 +60,12 @@ struct DreamCardView: View {
         .background(Color.ivoryGray)
         .clipShape(RoundedRectangle(cornerRadius: DreamSpacing.cardCornerRadius))
         .shadow(color: .black.opacity(0.06), radius: DreamSpacing.cardShadowRadius, x: 0, y: 2)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 20)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4).delay(Double(abs(dream.id.hashValue % 5)) * 0.08)) {
+                appeared = true
+            }
+        }
     }
 }

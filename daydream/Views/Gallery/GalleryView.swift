@@ -37,9 +37,12 @@ struct GalleryView: View {
                 .padding(.bottom, DreamSpacing.orbBottomPadding)
             }
         }
-        .navigationTitle("浮光梦境")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("浮光梦境")
+                    .dreamHeadline()
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     NavigationLink {

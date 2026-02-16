@@ -160,7 +160,9 @@ struct ProcessingView: View {
         router.finishProcessing(
             imageData: content.imageData,
             poem: content.poem,
-            reflection: content.reflectionQuestion
+            reflection: content.reflectionQuestion,
+            worldName: content.worldName,
+            symbols: content.symbols
         )
     }
 }

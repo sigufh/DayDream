@@ -7,6 +7,7 @@ struct LightOrbView: View {
     @State private var isPressed = false
     @State private var particles: [OrbParticle] = []
     @State private var longPressCompleted = false
+    @State private var animationTimer: Timer?
 
     var body: some View {
         ZStack {
@@ -63,8 +64,13 @@ struct LightOrbView: View {
             generateParticles()
             animateParticles()
         }
+        .onDisappear {
+            animationTimer?.invalidate()
+            animationTimer = nil
+        }
         .onLongPressGesture(minimumDuration: DreamSpacing.longPressDuration) {
             longPressCompleted = true
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             emitBurstParticles()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 onActivate()
@@ -92,7 +98,7 @@ struct LightOrbView: View {
     }
 
     private func animateParticles() {
-        Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { _ in
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { _ in
             for i in particles.indices {
                 particles[i].angle += particles[i].speed
             }

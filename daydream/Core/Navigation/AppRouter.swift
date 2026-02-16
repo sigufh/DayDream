@@ -17,6 +17,8 @@ final class AppRouter {
     var processedImageData: Data?
     var processedPoem: String = ""
     var processedReflection: String = ""
+    var processedWorldName: String = ""
+    var processedSymbols: [String] = []
 
     func openCapture() {
         showingCapture = true
@@ -30,10 +32,12 @@ final class AppRouter {
         showingProcessing = true
     }
 
-    func finishProcessing(imageData: Data?, poem: String, reflection: String) {
+    func finishProcessing(imageData: Data?, poem: String, reflection: String, worldName: String = "", symbols: [String] = []) {
         processedImageData = imageData
         processedPoem = poem
         processedReflection = reflection
+        processedWorldName = worldName
+        processedSymbols = symbols
         showingProcessing = false
         showingCuration = true
     }
@@ -57,5 +61,7 @@ final class AppRouter {
         processedImageData = nil
         processedPoem = ""
         processedReflection = ""
+        processedWorldName = ""
+        processedSymbols = []
     }
 }

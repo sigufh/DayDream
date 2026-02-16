@@ -33,6 +33,7 @@ struct DreamDetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onTapGesture {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     withAnimation(.spring(response: DreamSpacing.flipDuration, dampingFraction: 0.8)) {
                         isFlipped.toggle()
                     }

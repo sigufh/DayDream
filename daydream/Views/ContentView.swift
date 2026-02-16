@@ -5,16 +5,19 @@ struct ContentView: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        switch appState.currentFlow {
-        case .splash:
-            SplashView()
-        case .login:
-            LoginView()
-        case .onboarding:
-            OnboardingView()
-        case .main:
-            MainContainerView()
+        Group {
+            switch appState.currentFlow {
+            case .splash:
+                SplashView()
+            case .login:
+                LoginView()
+            case .onboarding:
+                OnboardingView()
+            case .main:
+                MainContainerView()
+            }
         }
+        .animation(.easeInOut(duration: 0.4), value: appState.currentFlow)
     }
 }
 

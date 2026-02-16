@@ -122,6 +122,7 @@ struct VoiceCaptureView: View {
         guard !isFinishing else { return }
         isFinishing = true
 
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         scene.lockColor(emotion: selectedEmotion)
         audioRecorder.stopRecording()
         transcriber.stopTranscribing()

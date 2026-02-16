@@ -168,7 +168,9 @@ struct CurationView: View {
             poem: router.processedPoem,
             emotion: router.capturedEmotion,
             imageData: router.processedImageData,
-            reflectionQuestion: router.processedReflection
+            reflectionQuestion: router.processedReflection,
+            worldName: router.processedWorldName,
+            symbols: router.processedSymbols
         )
 
         modelContext.insert(dream)
