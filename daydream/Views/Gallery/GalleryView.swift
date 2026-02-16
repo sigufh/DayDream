@@ -1,0 +1,85 @@
+import SwiftUI
+import SwiftData
+
+struct GalleryView: View {
+    @Environment(AppRouter.self) private var router
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Dream.createdAt, order: .reverse) private var dreams: [Dream]
+
+    var body: some View {
+        ZStack {
+            Color.pearlWhite.ignoresSafeArea()
+
+            if dreams.isEmpty {
+                GalleryEmptyStateView()
+            } else {
+                ScrollView {
+                    WaterfallLayout(columns: DreamSpacing.gridColumns, spacing: DreamSpacing.gridSpacing) {
+                        ForEach(dreams) { dream in
+                            DreamCardView(dream: dream)
+                                .onTapGesture {
+                                    router.galleryPath.append(dream)
+                                }
+                        }
+                    }
+                    .padding(.horizontal, DreamSpacing.gridHorizontalPadding)
+                    .padding(.top, DreamSpacing.md)
+                    .padding(.bottom, 100) // space for light orb
+                }
+            }
+
+            // Light orb overlay
+            VStack {
+                Spacer()
+                LightOrbView {
+                    router.openCapture()
+                }
+                .padding(.bottom, DreamSpacing.orbBottomPadding)
+            }
+        }
+        .navigationTitle("浮光梦境")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    NavigationLink {
+                        ChroniclesView()
+                    } label: {
+                        Label("历流年", systemImage: "chart.bar.xaxis")
+                    }
+
+                    NavigationLink {
+                        InterpreterView()
+                    } label: {
+                        Label("说书人", systemImage: "leaf.fill")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(Color.deepBlueGray)
+                }
+            }
+        }
+    }
+}
+
+struct GalleryEmptyStateView: View {
+    var body: some View {
+        VStack(spacing: DreamSpacing.lg) {
+            Image(systemName: "moon.zzz")
+                .font(.system(size: 48))
+                .foregroundStyle(Color.auroraLavender.opacity(0.5))
+
+            VStack(spacing: DreamSpacing.sm) {
+                Text("还没有梦境记录")
+                    .font(.system(size: 18, weight: .light, design: .serif))
+                    .foregroundStyle(Color.deepBlueGray)
+
+                Text("长按下方光球，开始记录你的第一个梦")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.mistyBlue)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.horizontal, DreamSpacing.xl)
+    }
+}
