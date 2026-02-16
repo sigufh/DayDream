@@ -40,26 +40,8 @@ struct GalleryView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("浮光梦境")
+                Text("梦境回廊")
                     .dreamHeadline()
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    NavigationLink {
-                        ChroniclesView()
-                    } label: {
-                        Label("历流年", systemImage: "chart.bar.xaxis")
-                    }
-
-                    NavigationLink {
-                        InterpreterView()
-                    } label: {
-                        Label("说书人", systemImage: "leaf.fill")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundStyle(Color.deepBlueGray)
-                }
             }
         }
     }
