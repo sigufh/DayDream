@@ -4,6 +4,7 @@ import SwiftData
 @Observable
 final class InterpreterViewModel {
     var isLeavesFalling = false
+    var isInterpreting = false
     var todayInterpretation: String = ""
     var latestResult: Divination?
     var showResult = false
@@ -14,10 +15,12 @@ final class InterpreterViewModel {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 
-    func completeDivination(leaves: [DivinationService.LeafType], dreams: [Dream], modelContext: ModelContext) {
+    func completeDivination(leaves: [DivinationService.LeafType], dreams: [Dream], modelContext: ModelContext) async {
         isLeavesFalling = false
+        isInterpreting = true
+        defer { isInterpreting = false }
 
-        let interpretation = DivinationService.interpret(leaves: leaves, dreams: dreams)
+        let interpretation = await DivinationService.interpret(leaves: leaves, dreams: dreams)
         let leafNames = leaves.map { $0.name }
         let relatedDreamID = dreams.first?.id
 
@@ -40,8 +43,9 @@ final class InterpreterViewModel {
             return
         }
 
-        // Simulate brief processing
-        try? await Task.sleep(for: .seconds(0.5))
-        todayInterpretation = DivinationService.zhouGongInterpret(dream: dream)
+        isInterpreting = true
+        defer { isInterpreting = false }
+
+        todayInterpretation = await DivinationService.zhouGongInterpret(dream: dream)
     }
 }

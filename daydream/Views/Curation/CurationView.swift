@@ -2,18 +2,16 @@ import SwiftUI
 import SwiftData
 
 struct CurationView: View {
+    let onDismiss: () -> Void
+
     @Environment(AppRouter.self) private var router
     @Environment(\.modelContext) private var modelContext
 
-    @State private var imageOffset: CGSize = .zero
-    @State private var imageScale: CGFloat = 1.0
-    @State private var poemPosition: CGSize = .zero
-    @State private var poemScale: CGFloat = 1.0
     @State private var showDateWatermark = true
-    @State private var showLocationWatermark = true
     @State private var showWeatherWatermark = true
     @State private var isSaving = false
     @State private var showSaveSuccess = false
+    @State private var showPermissionAlert = false
 
     var body: some View {
         ZStack {
@@ -23,7 +21,7 @@ struct CurationView: View {
                 // Top bar
                 HStack {
                     Button {
-                        router.dismissToGallery()
+                        onDismiss()
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 18, weight: .light))
@@ -42,7 +40,9 @@ struct CurationView: View {
 
                     // Save button
                     Button {
-                        Task { await saveDream() }
+                        Task { @MainActor in
+                            await saveDream()
+                        }
                     } label: {
                         Text("保存")
                             .font(.system(size: 15, weight: .medium))
@@ -53,41 +53,43 @@ struct CurationView: View {
                 }
                 .padding(.horizontal, DreamSpacing.md)
 
-                // Canvas area
-                ZStack {
-                    // Image
-                    ImageEditorView(
-                        imageData: router.processedImageData,
-                        imageOffset: $imageOffset,
-                        imageScale: $imageScale
-                    )
+                Spacer()
 
-                    // Text overlay
-                    TextOverlayEditor(
-                        text: .constant(router.processedPoem),
-                        position: $poemPosition,
-                        textScale: $poemScale
-                    )
+                // Polaroid card preview
+                ScrollView {
+                    VStack {
+                        Spacer()
+                            .frame(height: DreamSpacing.xl)
+
+                        PolaroidCardView(
+                            imageData: router.processedImageData,
+                            poem: router.processedPoem,
+                            emotion: router.capturedEmotion,
+                            date: Date(),
+                            weather: router.processedWeather,
+                            showDate: showDateWatermark,
+                            showWeather: showWeatherWatermark
+                        )
+                        .id(showDateWatermark)
+                        .id(showWeatherWatermark)
+
+                        Spacer()
+                    }
                 }
-                .padding(DreamSpacing.md)
 
                 Spacer()
 
                 // Watermark toggles
                 VStack(spacing: DreamSpacing.md) {
                     Text("水印设置")
-                        .dreamCaption()
+                        .font(.system(size: 12, weight: .light))
+                        .foregroundStyle(Color.mistyBlue)
 
-                    HStack(spacing: DreamSpacing.lg) {
+                    HStack(spacing: DreamSpacing.xl) {
                         WatermarkToggle(
                             icon: "calendar",
                             label: "日期",
                             isOn: $showDateWatermark
-                        )
-                        WatermarkToggle(
-                            icon: "location.fill",
-                            label: "地点",
-                            isOn: $showLocationWatermark
                         )
                         WatermarkToggle(
                             icon: "cloud.fill",
@@ -104,7 +106,9 @@ struct CurationView: View {
                 // Bottom actions
                 HStack(spacing: DreamSpacing.xl) {
                     Button {
-                        Task { await saveToPhotos() }
+                        Task { @MainActor in
+                            await saveToPhotos()
+                        }
                     } label: {
                         VStack(spacing: 4) {
                             Image(systemName: "photo.on.rectangle")
@@ -128,7 +132,9 @@ struct CurationView: View {
                     }
 
                     Button {
-                        Task { await saveDream() }
+                        Task { @MainActor in
+                            await saveDream()
+                        }
                     } label: {
                         VStack(spacing: 4) {
                             Image(systemName: "checkmark.circle.fill")
@@ -160,47 +166,111 @@ struct CurationView: View {
     }
 
     private func saveDream() async {
-        isSaving = true
-        defer { isSaving = false }
+        await MainActor.run {
+            isSaving = true
+        }
 
-        let dream = Dream(
-            transcript: router.capturedTranscript,
+        // Create dream on main thread
+        await MainActor.run {
+            let dream = Dream(
+                transcript: router.capturedTranscript,
+                poem: router.processedPoem,
+                emotion: router.capturedEmotion,
+                imageData: router.processedImageData,
+                locationName: router.processedLocation,
+                weatherDescription: router.processedWeather,
+                reflectionQuestion: router.processedReflection,
+                worldName: router.processedWorldName,
+                symbols: router.processedSymbols
+            )
+
+            // Insert and save
+            modelContext.insert(dream)
+
+            do {
+                try modelContext.save()
+            } catch {
+                print("Failed to save dream: \(error)")
+            }
+
+            isSaving = false
+        }
+
+        // Show success feedback
+        await MainActor.run {
+            showSaveSuccess = true
+        }
+
+        try? await Task.sleep(for: .seconds(1.0))
+
+        await MainActor.run {
+            showSaveSuccess = false
+        }
+
+        // Small delay before navigation to ensure save is fully committed
+        try? await Task.sleep(for: .seconds(0.1))
+
+        // Navigate away
+        await MainActor.run {
+            router.resetCaptureData()
+            onDismiss()
+        }
+    }
+
+    @MainActor
+    private func renderCard() -> UIImage? {
+        let card = PolaroidCardView(
+            imageData: router.processedImageData,
             poem: router.processedPoem,
             emotion: router.capturedEmotion,
-            imageData: router.processedImageData,
-            reflectionQuestion: router.processedReflection,
-            worldName: router.processedWorldName,
-            symbols: router.processedSymbols
+            date: Date(),
+            weather: router.processedWeather,
+            showDate: showDateWatermark,
+            showWeather: showWeatherWatermark
         )
-
-        modelContext.insert(dream)
-        try? modelContext.save()
-
-        showSaveSuccess = true
-        try? await Task.sleep(for: .seconds(1.0))
-        showSaveSuccess = false
-
-        router.finishCuration()
+        return card.render()
     }
 
     private func saveToPhotos() async {
-        guard let imageData = router.processedImageData,
-              let uiImage = UIImage(data: imageData) else { return }
-        let saved = await PhotoAlbumManager.saveImage(uiImage)
-        if saved {
-            showSaveSuccess = true
-            try? await Task.sleep(for: .seconds(1.0))
+
+        let renderedImage = await MainActor.run {
+            renderCard()
+        }
+
+        guard let renderedImage else { return }
+
+        let result = await PhotoAlbumManager.saveImage(renderedImage)
+
+        await MainActor.run {
+
+            switch result {
+
+            case .success:
+                showSaveSuccess = true
+
+            case .noPermission:
+                showPermissionAlert = true
+
+            case .failure:
+                break
+            }
+        }
+
+        try? await Task.sleep(for: .seconds(1.0))
+
+        await MainActor.run {
             showSaveSuccess = false
         }
     }
 
     private func shareImage() {
-        guard let imageData = router.processedImageData,
-              let uiImage = UIImage(data: imageData) else { return }
-        let activityVC = UIActivityViewController(activityItems: [uiImage], applicationActivities: nil)
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootVC = windowScene.windows.first?.rootViewController {
-            rootVC.present(activityVC, animated: true)
+        Task { @MainActor in
+            guard let renderedImage = renderCard() else { return }
+            let activityVC = UIActivityViewController(activityItems: [renderedImage], applicationActivities: nil)
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first?.rootViewController {
+                rootVC.present(activityVC, animated: true)
+            }
         }
     }
 }

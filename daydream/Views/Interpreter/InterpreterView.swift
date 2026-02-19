@@ -92,19 +92,31 @@ struct InterpreterView: View {
                         }
 
                         Spacer()
-                            .frame(height: DreamSpacing.xxl)
+                            .frame(height: 120) // 为光球留出空间
                     }
+                }
+            }
+
+            // Loading indicator
+            if viewModel.isInterpreting {
+                VStack {
+                    Spacer()
+                    ProgressView()
+                        .tint(.white.opacity(0.6))
+                        .padding(.bottom, DreamSpacing.xxl)
                 }
             }
 
             // Falling leaves overlay
             if viewModel.isLeavesFalling {
                 FallingLeavesOverlay { leaves in
-                    viewModel.completeDivination(
-                        leaves: leaves,
-                        dreams: dreams,
-                        modelContext: modelContext
-                    )
+                    Task {
+                        await viewModel.completeDivination(
+                            leaves: leaves,
+                            dreams: dreams,
+                            modelContext: modelContext
+                        )
+                    }
                 }
                 .allowsHitTesting(false)
             }

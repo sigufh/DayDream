@@ -5,6 +5,10 @@ struct DreamWorldMapView: View {
 
     @State private var simulation = WorldGraphSimulation()
     @State private var selectedNode: WorldNode?
+    @State private var scale: CGFloat = 1.0
+    @State private var lastScale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
 
     private var worldCount: Int {
         Set(dreams.compactMap { $0.worldName }.filter { !$0.isEmpty }).count
@@ -21,19 +25,27 @@ struct DreamWorldMapView: View {
             ZStack {
                 GeometryReader { geo in
                     Canvas { context, size in
-                        let offsetX = (size.width - 320) / 2
-                        let offsetY = (size.height - 320) / 2
+                        let baseOffsetX = (size.width - 320) / 2 + offset.width
+                        let baseOffsetY = (size.height - 320) / 2 + offset.height
+                        let centerX = size.width / 2
+                        let centerY = size.height / 2
 
                         // Draw edges
                         for edge in simulation.edges {
                             guard let fromNode = simulation.nodes.first(where: { $0.id == edge.from }),
                                   let toNode = simulation.nodes.first(where: { $0.id == edge.to }) else { continue }
 
-                            let from = CGPoint(x: fromNode.position.x + offsetX, y: fromNode.position.y + offsetY)
-                            let to = CGPoint(x: toNode.position.x + offsetX, y: toNode.position.y + offsetY)
+                            let from = CGPoint(
+                                x: (fromNode.position.x + baseOffsetX - centerX) * scale + centerX,
+                                y: (fromNode.position.y + baseOffsetY - centerY) * scale + centerY
+                            )
+                            let to = CGPoint(
+                                x: (toNode.position.x + baseOffsetX - centerX) * scale + centerX,
+                                y: (toNode.position.y + baseOffsetY - centerY) * scale + centerY
+                            )
 
                             let midX = (from.x + to.x) / 2
-                            let midY = (from.y + to.y) / 2 - 20
+                            let midY = (from.y + to.y) / 2 - 20 * scale
 
                             var path = Path()
                             path.move(to: from)
@@ -41,13 +53,16 @@ struct DreamWorldMapView: View {
 
                             context.stroke(path,
                                           with: .color(Color.auroraLavender.opacity(0.3)),
-                                          style: StrokeStyle(lineWidth: 1 + edge.weight, lineCap: .round))
+                                          style: StrokeStyle(lineWidth: (1 + edge.weight) * scale, lineCap: .round))
                         }
 
                         // Draw nodes
                         for node in simulation.nodes {
-                            let pos = CGPoint(x: node.position.x + offsetX, y: node.position.y + offsetY)
-                            let nodeSize = CGFloat(16 + node.dreamCount * 8)
+                            let pos = CGPoint(
+                                x: (node.position.x + baseOffsetX - centerX) * scale + centerX,
+                                y: (node.position.y + baseOffsetY - centerY) * scale + centerY
+                            )
+                            let nodeSize = CGFloat(16 + node.dreamCount * 8) * scale
 
                             // Glow
                             let glowRect = CGRect(x: pos.x - nodeSize, y: pos.y - nodeSize,
@@ -63,19 +78,48 @@ struct DreamWorldMapView: View {
 
                             // Label
                             let label = Text(node.id)
-                                .font(.system(size: 10, weight: .medium, design: .serif))
+                                .font(.system(size: 10 * scale, weight: .medium, design: .serif))
                                 .foregroundColor(Color.deepBlueGray)
-                            context.draw(label, at: CGPoint(x: pos.x, y: pos.y + nodeSize / 2 + 12))
+                            context.draw(label, at: CGPoint(x: pos.x, y: pos.y + nodeSize / 2 + 12 * scale))
                         }
                     }
+                    .clipShape(Rectangle())
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                offset = CGSize(
+                                    width: lastOffset.width + value.translation.width,
+                                    height: lastOffset.height + value.translation.height
+                                )
+                            }
+                            .onEnded { _ in
+                                lastOffset = offset
+                            }
+                    )
+                    .gesture(
+                        MagnificationGesture()
+                            .onChanged { value in
+                                scale = min(max(lastScale * value, 0.5), 3.0)
+                            }
+                            .onEnded { value in
+                                scale = min(max(lastScale * value, 0.5), 3.0)
+                                lastScale = scale
+                            }
+                    )
                     .onTapGesture { location in
-                        let offsetX = (geo.size.width - 320) / 2
-                        let offsetY = (geo.size.height - 320) / 2
+                        let baseOffsetX = (geo.size.width - 320) / 2 + offset.width
+                        let baseOffsetY = (geo.size.height - 320) / 2 + offset.height
+                        let centerX = geo.size.width / 2
+                        let centerY = geo.size.height / 2
 
                         for node in simulation.nodes {
-                            let pos = CGPoint(x: node.position.x + offsetX, y: node.position.y + offsetY)
+                            let pos = CGPoint(
+                                x: (node.position.x + baseOffsetX - centerX) * scale + centerX,
+                                y: (node.position.y + baseOffsetY - centerY) * scale + centerY
+                            )
                             let dist = sqrt(pow(location.x - pos.x, 2) + pow(location.y - pos.y, 2))
-                            if dist < CGFloat(16 + node.dreamCount * 8) {
+                            if dist < CGFloat(16 + node.dreamCount * 8) * scale {
                                 selectedNode = node
                                 return
                             }

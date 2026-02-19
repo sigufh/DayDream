@@ -2,6 +2,8 @@ import Foundation
 
 enum DivinationService {
 
+    private static let client = DashScopeClient()
+
     // MARK: - Leaf Types
 
     struct LeafType {
@@ -53,8 +55,36 @@ enum DivinationService {
         "whimsy": "此梦奇幻瑰丽，主想象力丰沛。创造力正旺，宜把握灵感之机。",
     ]
 
-    static func zhouGongInterpret(dream: Dream) -> String {
-        // Try symbol-based interpretation first
+    static func zhouGongInterpret(dream: Dream) async -> String {
+        if APIConfig.hasValidAPIKey {
+            do {
+                let systemPrompt = """
+                你是周公，精通周公解梦之术。请以周公的口吻，用古典雅致的中文为用户解梦。
+                解读需包含：梦境意象分析、运势预示、生活建议。
+                语言风格要古朴雅致，像古人批注梦境一样。
+                直接给出解梦内容，不要加任何前缀或格式标记。200字以内。
+                """
+
+                let userMessage = """
+                梦境内容：\(dream.transcript)
+                梦中意象：\(dream.symbols.joined(separator: "、"))
+                情绪基调：\(dream.emotion.displayName)
+                """
+
+                return try await client.chat(
+                    system: systemPrompt,
+                    userMessage: userMessage,
+                    maxTokens: 512
+                )
+            } catch {
+                print("Zhou Gong API failed, falling back to template: \(error)")
+            }
+        }
+
+        return zhouGongFallback(dream: dream)
+    }
+
+    private static func zhouGongFallback(dream: Dream) -> String {
         var interpretations: [String] = []
         for symbol in dream.symbols {
             if let interp = symbolInterpretations[symbol] {
@@ -66,13 +96,44 @@ enum DivinationService {
             return interpretations.joined(separator: "\n\n")
         }
 
-        // Fallback to emotion-based
         return emotionInterpretations[dream.emotionRaw] ?? "此梦意象深远，需细细品味方能悟其真意。"
     }
 
     // MARK: - Leaf Divination
 
-    static func interpret(leaves: [LeafType], dreams: [Dream]) -> String {
+    static func interpret(leaves: [LeafType], dreams: [Dream]) async -> String {
+        if APIConfig.hasValidAPIKey {
+            do {
+                let leafMeanings = leaves.map { "\($0.name)（\($0.meaning)）" }.joined(separator: "、")
+                let recentDream = dreams.first
+
+                let systemPrompt = """
+                你是一位神秘的占卜师，擅长通过落叶占卜来解读命运。
+                用户摇动手机后落下了几片叶子，请根据叶子的种类和含义，结合用户最近的梦境，给出占卜解读。
+                语言风格要神秘而温暖，像一位智慧的长者在指引方向。
+                直接给出解读内容，不要加任何前缀或格式标记。150字以内。
+                """
+
+                var userMessage = "落叶：\(leafMeanings)"
+                if let dream = recentDream {
+                    userMessage += "\n最近的梦境：\(dream.transcript)"
+                    userMessage += "\n梦境情绪：\(dream.emotion.displayName)"
+                }
+
+                return try await client.chat(
+                    system: systemPrompt,
+                    userMessage: userMessage,
+                    maxTokens: 512
+                )
+            } catch {
+                print("Leaf divination API failed, falling back to template: \(error)")
+            }
+        }
+
+        return interpretFallback(leaves: leaves, dreams: dreams)
+    }
+
+    private static func interpretFallback(leaves: [LeafType], dreams: [Dream]) -> String {
         let leafMeanings = leaves.map { "\($0.name)（\($0.meaning)）" }.joined(separator: "、")
 
         let recentEmotion: String

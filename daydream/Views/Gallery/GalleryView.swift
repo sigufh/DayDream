@@ -5,6 +5,7 @@ struct GalleryView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Dream.createdAt, order: .reverse) private var dreams: [Dream]
+    @State private var showSettings = false
 
     var body: some View {
         ZStack {
@@ -24,17 +25,8 @@ struct GalleryView: View {
                     }
                     .padding(.horizontal, DreamSpacing.gridHorizontalPadding)
                     .padding(.top, DreamSpacing.md)
-                    .padding(.bottom, 100) // space for light orb
+                    .padding(.bottom, 120) // 为光球留出空间
                 }
-            }
-
-            // Light orb overlay
-            VStack {
-                Spacer()
-                LightOrbView {
-                    router.openCapture()
-                }
-                .padding(.bottom, DreamSpacing.orbBottomPadding)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -43,6 +35,18 @@ struct GalleryView: View {
                 Text("梦境回廊")
                     .dreamHeadline()
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color.deepBlueGray)
+                }
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
     }
 }

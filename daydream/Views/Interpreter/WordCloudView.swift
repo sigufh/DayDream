@@ -5,18 +5,51 @@ struct WordCloudView: View {
     let dreams: [Dream]
 
     @State private var layout = WordCloudLayout()
+    @State private var scale: CGFloat = 1.0
+    @State private var lastScale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
 
     var body: some View {
         Canvas { context, size in
+            let centerX = size.width / 2 + offset.width
+            let centerY = size.height / 2 + offset.height
+
             for item in layout.items {
                 let text = Text(item.word)
-                    .font(.system(size: item.fontSize, weight: .light, design: .serif))
+                    .font(.system(size: item.fontSize * scale, weight: .light, design: .serif))
                     .foregroundColor(item.color)
-                context.draw(text, at: CGPoint(x: item.x + size.width / 2,
-                                                y: item.y + size.height / 2))
+                context.draw(text, at: CGPoint(
+                    x: item.x * scale + centerX,
+                    y: item.y * scale + centerY
+                ))
             }
         }
         .frame(height: 200)
+        .clipShape(Rectangle())
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    offset = CGSize(
+                        width: lastOffset.width + value.translation.width,
+                        height: lastOffset.height + value.translation.height
+                    )
+                }
+                .onEnded { _ in
+                    lastOffset = offset
+                }
+        )
+        .gesture(
+            MagnificationGesture()
+                .onChanged { value in
+                    scale = min(max(lastScale * value, 0.5), 3.0)
+                }
+                .onEnded { value in
+                    scale = min(max(lastScale * value, 0.5), 3.0)
+                    lastScale = scale
+                }
+        )
         .onAppear {
             layout.compute(divinations: divinations, dreams: dreams)
         }
