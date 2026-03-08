@@ -2,164 +2,56 @@ import SwiftUI
 import SwiftData
 
 struct InterpreterView: View {
-    @Query(sort: \Dream.createdAt, order: .reverse) private var dreams: [Dream]
-    @Query(sort: \Divination.date, order: .reverse) private var divinations: [Divination]
-    @Environment(\.modelContext) private var modelContext
-
-    @State private var viewModel = InterpreterViewModel()
+    @State private var selectedTab = 0
+    @State private var chatViewModel = InterpreterChatViewModel()
 
     var body: some View {
         ZStack {
             InterpreterBackground()
 
-            if dreams.isEmpty {
-                InterpreterEmptyStateView()
-            } else {
-                ScrollView {
-                    VStack(spacing: DreamSpacing.xl) {
-                        Spacer()
-                            .frame(height: DreamSpacing.md)
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: DreamSpacing.sm) {
+                    Text("说书人")
+                        .font(.system(size: 24, weight: .light, design: .serif))
+                        .foregroundStyle(.white)
+                        .tracking(4)
 
-                        // Header
-                        VStack(spacing: DreamSpacing.sm) {
-                            Text("说书人")
-                                .font(.system(size: 24, weight: .light, design: .serif))
-                                .foregroundStyle(.white)
-                                .tracking(4)
-
-                            Text("解梦问签，叶落知秋")
-                                .font(.system(size: 13, weight: .light))
-                                .foregroundStyle(.white.opacity(0.5))
-                        }
-
-                        // Zhou Gong interpretation card for latest dream
-                        if let latestDream = dreams.first, !viewModel.todayInterpretation.isEmpty {
-                            VStack(alignment: .leading, spacing: DreamSpacing.sm) {
-                                Text("今日解梦")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.6))
-                                    .padding(.horizontal, DreamSpacing.md)
-
-                                ZhouGongInterpretationCard(
-                                    dream: latestDream,
-                                    interpretation: viewModel.todayInterpretation
-                                )
-                            }
-                            .padding(.horizontal, DreamSpacing.md)
-                        }
-
-                        // Shake prompt
-                        VStack(spacing: DreamSpacing.md) {
-                            Image(systemName: "leaf.fill")
-                                .font(.system(size: 32))
-                                .foregroundStyle(Color.auroraLavender.opacity(0.6))
-
-                            Text("摇一摇，落叶问签")
-                                .font(.system(size: 14, weight: .light, design: .serif))
-                                .foregroundStyle(.white.opacity(0.7))
-
-                            Text("轻轻摇动手机，三片叶子将为你指引方向")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.white.opacity(0.4))
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.vertical, DreamSpacing.lg)
-
-                        // Word cloud
-                        if !divinations.isEmpty || !dreams.isEmpty {
-                            VStack(alignment: .leading, spacing: DreamSpacing.sm) {
-                                Text("意象云图")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.6))
-                                    .padding(.horizontal, DreamSpacing.md)
-
-                                WordCloudView(divinations: divinations, dreams: dreams)
-                                    .padding(.horizontal, DreamSpacing.md)
-                            }
-                        }
-
-                        // Divination history
-                        if !divinations.isEmpty {
-                            VStack(alignment: .leading, spacing: DreamSpacing.sm) {
-                                Text("问签记录")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.6))
-                                    .padding(.horizontal, DreamSpacing.md)
-
-                                DivinationHistoryList(divinations: divinations)
-                                    .padding(.horizontal, DreamSpacing.md)
-                            }
-                        }
-
-                        Spacer()
-                            .frame(height: 120) // 为光球留出空间
-                    }
+                    Text("解梦问签，占卜未来")
+                        .font(.system(size: 13, weight: .light))
+                        .foregroundStyle(.white.opacity(0.5))
                 }
-            }
+                .padding(.top, DreamSpacing.md)
 
-            // Loading indicator
-            if viewModel.isInterpreting {
-                VStack {
-                    Spacer()
-                    ProgressView()
-                        .tint(.white.opacity(0.6))
-                        .padding(.bottom, DreamSpacing.xxl)
+                // 分段控件
+                Picker("", selection: $selectedTab) {
+                    Text("周公解梦").tag(0)
+                    Text("六爻占卜").tag(1)
+                    Text("塔罗牌").tag(2)
+                    Text("记录").tag(3)
                 }
-            }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, DreamSpacing.md)
+                .padding(.vertical, DreamSpacing.md)
 
-            // Falling leaves overlay
-            if viewModel.isLeavesFalling {
-                FallingLeavesOverlay { leaves in
-                    Task {
-                        await viewModel.completeDivination(
-                            leaves: leaves,
-                            dreams: dreams,
-                            modelContext: modelContext
-                        )
-                    }
+                // 内容区域
+                TabView(selection: $selectedTab) {
+                    ZhouGongView(chatViewModel: chatViewModel)
+                        .tag(0)
+
+                    HexagramView(chatViewModel: chatViewModel)
+                        .tag(1)
+
+                    TarotView(chatViewModel: chatViewModel)
+                        .tag(2)
+
+                    HistoryView()
+                        .tag(3)
                 }
-                .allowsHitTesting(false)
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
-
-            // Shake detector (invisible)
-            ShakeDetector {
-                viewModel.triggerDivination()
-            }
-            .frame(width: 0, height: 0)
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .sheet(isPresented: $viewModel.showResult) {
-            if let result = viewModel.latestResult {
-                DivinationResultSheet(divination: result) {
-                    viewModel.showResult = false
-                }
-            }
-        }
-        .task {
-            await viewModel.generateInterpretation(for: dreams.first)
-        }
-    }
-}
-
-private struct InterpreterEmptyStateView: View {
-    var body: some View {
-        VStack(spacing: DreamSpacing.lg) {
-            Image(systemName: "moon.stars")
-                .font(.system(size: 48))
-                .foregroundStyle(Color.auroraLavender.opacity(0.5))
-
-            VStack(spacing: DreamSpacing.sm) {
-                Text("尚无梦境可解")
-                    .font(.system(size: 18, weight: .light, design: .serif))
-                    .foregroundStyle(.white)
-
-                Text("先记录一个梦境，说书人才能为你解读")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .padding(.horizontal, DreamSpacing.xl)
     }
 }

@@ -17,6 +17,8 @@ struct ShakeDetector: UIViewControllerRepresentable {
 
 class ShakeDetectorViewController: UIViewController {
     var onShake: (() -> Void)?
+    private var hasShaken = false
+    private let debounceInterval: TimeInterval = 1.0
 
     override var canBecomeFirstResponder: Bool { true }
 
@@ -25,9 +27,20 @@ class ShakeDetectorViewController: UIViewController {
         becomeFirstResponder()
     }
 
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        resignFirstResponder()
+    }
+
     override func motionBegan(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-        if motion == .motionShake {
-            onShake?()
+        guard motion == .motionShake, !hasShaken else { return }
+
+        hasShaken = true
+        onShake?()
+
+        // 防抖动：1秒后重置
+        DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval) { [weak self] in
+            self?.hasShaken = false
         }
     }
 }
