@@ -17,6 +17,8 @@ final class Dream {
     var reflectionQuestion: String?
     var worldName: String?
     var symbols: [String]
+    var isFavorite: Bool = false  // 收藏标记（默认值）
+    var diary: String?  // 用户日记
 
     var emotion: DreamEmotion {
         get { DreamEmotion(rawValue: emotionRaw) ?? .serenity }
@@ -33,7 +35,9 @@ final class Dream {
         temperature: Double? = nil,
         reflectionQuestion: String? = nil,
         worldName: String? = nil,
-        symbols: [String] = []
+        symbols: [String] = [],
+        isFavorite: Bool = false,
+        diary: String? = nil
     ) {
         self.id = UUID()
         self.createdAt = Date()
@@ -47,5 +51,7 @@ final class Dream {
         self.reflectionQuestion = reflectionQuestion
         self.worldName = worldName
         self.symbols = symbols
+        self.isFavorite = isFavorite
+        self.diary = diary
     }
 }

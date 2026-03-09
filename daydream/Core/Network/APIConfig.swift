@@ -42,7 +42,23 @@ nonisolated enum APIConfig {
         return ""
     }
 
+    static var geminiAPIKey: String {
+        if let key = Bundle.main.infoDictionary?["GEMINI_API_KEY"] as? String,
+           !key.isEmpty,
+           key != "your-gemini-key-here" {
+            return key
+        }
+        #if DEBUG
+        print("⚠️ Gemini API key not configured.")
+        #endif
+        return ""
+    }
+
     static var hasValidAPIKey: Bool {
         !dashScopeAPIKey.isEmpty
+    }
+
+    static var hasValidGeminiKey: Bool {
+        !geminiAPIKey.isEmpty
     }
 }

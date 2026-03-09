@@ -58,10 +58,23 @@ actor DashScopeClient {
         return content
     }
 
-    // MARK: - Image Generation (Wan 2.6, Synchronous)
+    // MARK: - Image Generation (Wanx & Flux)
 
     func generateImage(prompt: String, negativePrompt: String = "text, watermark, blurry, low quality", size: String = "768*1024") async throws -> Data {
-        guard !apiKey.isEmpty else { throw APIError.missingAPIKey }
+        let selectedModel = UserPreferences.shared.imageModel
+
+        switch selectedModel {
+        case .wanx:
+            guard !apiKey.isEmpty else { throw APIError.missingAPIKey }
+            return try await generateWithWanx(prompt: prompt, negativePrompt: negativePrompt, size: size)
+        case .flux:
+            let qwenImageClient = QwenImageClient()
+            return try await qwenImageClient.generateImage(prompt: prompt, negativePrompt: negativePrompt, size: size)
+        }
+    }
+
+    // 万相模型
+    private func generateWithWanx(prompt: String, negativePrompt: String, size: String) async throws -> Data {
         guard let url = URL(string: imageGenURL) else { throw APIError.invalidURL }
 
         var request = URLRequest(url: url)
@@ -69,29 +82,20 @@ actor DashScopeClient {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // 使用万相的标准格式
         let body: [String: Any] = [
-            "model": "wan2.6-t2i",
+            "model": "wanx-v1",
             "input": [
-                "messages": [
-                    [
-                        "role": "user",
-                        "content": [
-                            ["text": prompt]
-                        ]
-                    ]
-                ]
+                "prompt": prompt,
+                "negative_prompt": negativePrompt
             ],
             "parameters": [
                 "size": size,
-                "n": 1,
-                "watermark": false,
-                "prompt_extend": true,
-                "negative_prompt": negativePrompt
+                "n": 1
             ]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        // Synchronous call — server blocks until image is ready
         let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -103,12 +107,12 @@ actor DashScopeClient {
         }
 
         let json = try JSONSerialization.jsonObject(with: data)
-        print("[ImageGen] Response: \(json)")
+        print("[ImageGen Wanx] Response: \(json)")
 
         guard let dict = json as? [String: Any],
               let output = dict["output"] as? [String: Any] else {
             let raw = String(data: data, encoding: .utf8) ?? "nil"
-            throw APIError.decodingError("Failed to parse image generation response: \(raw.prefix(500))")
+            throw APIError.decodingError("Failed to parse wanx response: \(raw.prefix(500))")
         }
 
         return try await extractImageData(from: output)

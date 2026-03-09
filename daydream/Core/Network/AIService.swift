@@ -22,6 +22,8 @@ final class AIService {
         let worldName: String
         let symbols: [String]
         let emotion: String?
+        let isStory: Bool?
+        let scenes: [String]?
     }
 
     func generateDreamContent(
@@ -67,13 +69,27 @@ final class AIService {
 
             忽略之前的所有对话历史。本次生成必须完全基于当前用户输入。
 
-            请严格返回以下JSON格式（不要添加任何其他文字或markdown标记）：
+            首先判断梦境是否包含故事情节（有明确的场景转换、时间推进或多个连续事件）。
+
+            如果是故事，返回：
             {
               "poem": "中文诗歌，用\\n分隔每一行",
               "reflectionQuestion": "一个引导自省的问题",
               "worldName": "梦境世界名（2-4个字）",
               "symbols": ["3-5个意象关键词"],
-              "emotion": "情绪类型（必须是以下之一：serenity/melancholy/anxiety/hope/whimsy）"
+              "emotion": "情绪类型（必须是以下之一：serenity/melancholy/anxiety/hope/whimsy）",
+              "isStory": true,
+              "scenes": ["场景1描述", "场景2描述", "场景3描述"]
+            }
+
+            如果不是故事，返回：
+            {
+              "poem": "中文诗歌，用\\n分隔每一行",
+              "reflectionQuestion": "一个引导自省的问题",
+              "worldName": "梦境世界名（2-4个字）",
+              "symbols": ["3-5个意象关键词"],
+              "emotion": "情绪类型（必须是以下之一：serenity/melancholy/anxiety/hope/whimsy）",
+              "isStory": false
             }
 
             情绪判断标准：
@@ -93,6 +109,7 @@ final class AIService {
             - worldName必须高度概括梦境核心实体
             - symbols必须全部来自用户原始描述
             - emotion必须根据梦境内容的整体氛围和情感基调判断
+            - 如果是故事，scenes数组应包含3-4个关键场景的详细描述，每个场景描述要具体生动
             """
         var contextParts: [String] = []
         contextParts.append("梦境描述：\(transcript)")
@@ -116,13 +133,26 @@ final class AIService {
         let detectedEmotion = parseEmotion(from: qwenResult.emotion)
         let finalEmotion = detectedEmotion ?? emotion
 
-        let imagePrompt = buildImagePrompt(transcript: transcript, emotion: finalEmotion)
         var imageData: Data?
-        do {
-            imageData = try await client.generateImage(prompt: imagePrompt)
-        } catch {
-            print("Image generation failed, using placeholder: \(error)")
-            imageData = generatePlaceholderImage(emotion: finalEmotion)
+
+        if qwenResult.isStory == true, let scenes = qwenResult.scenes, !scenes.isEmpty {
+            // 生成包含多个分镜的单张图片
+            let storyPrompt = buildStoryImagePrompt(scenes: scenes, emotion: finalEmotion)
+            do {
+                imageData = try await client.generateImage(prompt: storyPrompt)
+            } catch {
+                print("Story image generation failed: \(error)")
+                imageData = generatePlaceholderImage(emotion: finalEmotion)
+            }
+        } else {
+            // 单图生成
+            let imagePrompt = buildImagePrompt(transcript: transcript, emotion: finalEmotion)
+            do {
+                imageData = try await client.generateImage(prompt: imagePrompt)
+            } catch {
+                print("Image generation failed, using placeholder: \(error)")
+                imageData = generatePlaceholderImage(emotion: finalEmotion)
+            }
         }
 
         return DreamContent(
@@ -294,6 +324,17 @@ final class AIService {
     }
 
     // MARK: - Image Prompt
+
+    private func buildStoryImagePrompt(scenes: [String], emotion: DreamEmotion) -> String {
+        let artStyle = UserPreferences.shared.artStyle
+        let stylePrefix = getStylePrefix(for: artStyle)
+        let emotionDescription = getEmotionDescription(for: emotion, style: artStyle)
+        let styleSuffix = getStyleSuffix(for: artStyle)
+
+        let scenesText = scenes.enumerated().map { "Scene \($0 + 1): \($1)" }.joined(separator: ". ")
+
+        return "Comic panel layout with \(scenes.count) panels showing a story sequence. \(scenesText). \(stylePrefix), \(emotionDescription), \(styleSuffix), manga storyboard style, clear panel divisions, dreamlike quality, no text, no watermark"
+    }
 
     private func buildImagePrompt(transcript: String, emotion: DreamEmotion) -> String {
         let artStyle = UserPreferences.shared.artStyle

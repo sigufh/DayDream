@@ -10,7 +10,7 @@ struct PolaroidCardView: View {
     let showWeather: Bool
 
     private let cardWidth: CGFloat = 340
-    private let imageHeight: CGFloat = 340
+    private let imageHeight: CGFloat = 453  // 340 * 4/3
     private let bottomHeight: CGFloat = 140
 
     var body: some View {

@@ -1,10 +1,12 @@
 import SwiftUI
+import SwiftData
 
 struct DreamDetailView: View {
-    let dream: Dream
+    @Bindable var dream: Dream
     @State private var isFlipped = false
     @State private var showSaveSuccess = false
     @State private var showPermissionAlert = false
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         ZStack {
@@ -17,8 +19,8 @@ struct DreamDetailView: View {
                     let cardHeight = cardWidth / DreamSpacing.detailCardAspectRatio
 
                     ZStack {
-                        // Back face
-                        DreamCardBack(dream: dream)
+                        // Back face - 新的宝丽来背面
+                        PolaroidDreamCardBack(dream: dream)
                             .frame(width: cardWidth, height: cardHeight)
                             .rotation3DEffect(
                                 .degrees(isFlipped ? 0 : 180),
@@ -37,6 +39,8 @@ struct DreamDetailView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onTapGesture {
+                        // 保存编辑
+                        try? modelContext.save()
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         withAnimation(.spring(response: DreamSpacing.flipDuration, dampingFraction: 0.8)) {
                             isFlipped.toggle()
@@ -46,6 +50,19 @@ struct DreamDetailView: View {
 
                 // 底部操作按钮
                 HStack(spacing: DreamSpacing.xl) {
+                    // 收藏按钮
+                    Button {
+                        toggleFavorite()
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: dream.isFavorite ? "heart.fill" : "heart")
+                                .font(.system(size: 20))
+                            Text("收藏")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundStyle(dream.isFavorite ? Color.auroraLavender : Color.deepBlueGray)
+                    }
+
                     Button {
                         Task { @MainActor in
                             await saveToPhotos()
@@ -151,5 +168,11 @@ struct DreamDetailView: View {
                 rootVC.present(activityVC, animated: true)
             }
         }
+    }
+
+    private func toggleFavorite() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        dream.isFavorite.toggle()
+        try? modelContext.save()
     }
 }

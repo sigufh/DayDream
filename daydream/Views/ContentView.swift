@@ -83,8 +83,8 @@ struct MainContainerView: View {
                     }
                 }
 
-                // 录音键
-                if selectedTab == 0 && transitionManager.currentPage == .gallery {
+                // 录音键（只在画廊根页面显示）
+                if selectedTab == 0 && transitionManager.currentPage == .gallery && router.galleryPath.isEmpty {
                     VStack {
                         Spacer()
                         LightOrbView {

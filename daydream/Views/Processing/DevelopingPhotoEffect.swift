@@ -13,24 +13,23 @@ struct DevelopingPhotoEffect: View {
 
     var body: some View {
         VStack(spacing: DreamSpacing.lg) {
-            // Image frame
+            // Image frame (3:4 ratio)
             ZStack {
                 RoundedRectangle(cornerRadius: DreamSpacing.cardCornerRadius)
                     .fill(emotion.linearGradient)
-                    .frame(height: 300)
+                    .aspectRatio(3/4, contentMode: .fit)
 
                 if let imageData, let uiImage = UIImage(data: imageData) {
                     Image(uiImage: uiImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(height: 300)
+                        .aspectRatio(3/4, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: DreamSpacing.cardCornerRadius))
                         .blur(radius: imageBlur)
                         .opacity(imageOpacity)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 300)
+            .aspectRatio(3/4, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: DreamSpacing.cardCornerRadius))
 
             // Poem with typewriter
