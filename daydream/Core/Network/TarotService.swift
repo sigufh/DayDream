@@ -141,7 +141,7 @@ enum TarotService {
         }
     }
 
-    enum SpreadType: String, Codable {
+    enum SpreadType: String, Codable, CaseIterable {
         case single = "单张"
         case threeCard = "三牌阵"
         case celtic = "凯尔特十字"
@@ -155,6 +155,17 @@ enum TarotService {
             case .celtic:
                 return ["现状", "挑战", "根源", "过去", "目标", "未来", "自己", "环境", "希望恐惧", "结果"]
             }
+        }
+    }
+
+    static func cardCount(for spread: SpreadType) -> Int {
+        switch spread {
+        case .single:
+            return 1
+        case .threeCard:
+            return 3
+        case .celtic:
+            return 10
         }
     }
 
@@ -182,6 +193,46 @@ enum TarotService {
     enum DeckType {
         case majorOnly  // 仅大阿尔卡纳22张
         case full       // 全部78张
+    }
+
+    static func finalizeReading(
+        cards: [TarotReading.DrawnCard],
+        spread: SpreadType,
+        dreams: [Dream]
+    ) async -> TarotReading {
+        let reading = TarotReading(
+            cards: cards,
+            spread: spread,
+            interpretation: ""
+        )
+
+        let interpretation = await interpret(reading: reading, dreams: dreams)
+        return TarotReading(
+            cards: cards,
+            spread: spread,
+            interpretation: interpretation
+        )
+    }
+
+    static func createReading(
+        spread: SpreadType,
+        deckType: DeckType,
+        dreams: [Dream]
+    ) async -> TarotReading {
+        let cards = drawCards(count: cardCount(for: spread), deckType: deckType)
+        return await finalizeReading(cards: cards, spread: spread, dreams: dreams)
+    }
+
+    static func divination(from reading: TarotReading, relatedDreamID: UUID? = nil) -> Divination {
+        let cardNames = reading.cards.map {
+            "\($0.position)：\($0.card.nameChinese)\($0.isReversed ? " 逆位" : " 正位")"
+        }
+
+        return Divination(
+            leaves: cardNames,
+            interpretation: reading.interpretation,
+            relatedDreamID: relatedDreamID
+        )
     }
 
     // MARK: - Interpretation

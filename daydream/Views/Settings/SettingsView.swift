@@ -8,26 +8,26 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    ForEach(ArtStyle.allCases) { style in
+                    ForEach(SkillRegistry.builtInSkills, id: \.id) { skill in
                         Button {
-                            preferences.artStyle = style
+                            preferences.selectedSkillID = skill.id
                         } label: {
                             HStack(spacing: DreamSpacing.md) {
-                                Image(systemName: style.icon)
+                                Image(systemName: skill.icon)
                                     .font(.system(size: 20))
                                     .foregroundStyle(
-                                        preferences.artStyle == style
+                                        preferences.currentSkill.id == skill.id
                                             ? Color.auroraLavender
                                             : Color.mistyBlue
                                     )
                                     .frame(width: 32)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(style.displayName)
+                                    Text(skill.definition.displayName)
                                         .font(.system(size: 16, weight: .medium))
                                         .foregroundStyle(Color.deepBlueGray)
 
-                                    Text(style.description)
+                                    Text(skill.definition.description)
                                         .font(.system(size: 13))
                                         .foregroundStyle(Color.mistyBlue)
                                         .lineLimit(2)
@@ -35,7 +35,7 @@ struct SettingsView: View {
 
                                 Spacer()
 
-                                if preferences.artStyle == style {
+                                if preferences.currentSkill.id == skill.id {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 20))
                                         .foregroundStyle(Color.auroraLavender)
@@ -50,7 +50,7 @@ struct SettingsView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Color.deepBlueGray)
                 } footer: {
-                    Text("选择你喜欢的艺术风格，AI将以此风格生成梦境画面")
+                    Text("选择你喜欢的艺术风格，应用会把它作为内部 skill，统一影响梦境画面、诗歌与代理解读语气")
                         .font(.system(size: 12))
                         .foregroundStyle(Color.mistyBlue)
                 }

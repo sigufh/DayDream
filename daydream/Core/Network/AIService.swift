@@ -61,8 +61,7 @@ final class AIService {
         weather: String?,
         location: String?
     ) async throws -> DreamContent {
-        let artStyle = UserPreferences.shared.artStyle
-        let poemGuide = artStyle.poemStyleGuide
+        let skill = UserPreferences.shared.currentSkill
 
         let systemPrompt = """
             你是一位专注具体细节表达的梦境诗人和心理分析师。
@@ -99,8 +98,12 @@ final class AIService {
             - hope（希望）：光明、温暖、向上、美好、期待的梦境
             - whimsy（奇幻）：奇异、梦幻、超现实、有趣、魔幻的梦境
 
-            诗歌风格要求（当前艺术风格：\(artStyle.displayName)）：
-            \(poemGuide)
+            当前生成 skill：\(skill.definition.displayName)
+            诗歌风格要求：
+            \(skill.poemStyleGuide)
+
+            图像风格要求：
+            \(skill.imagePromptGuide)
 
             规则：
             - 必须围绕用户梦境中的具体实体展开，必须描述用户梦境的所见所感
@@ -170,8 +173,7 @@ final class AIService {
     // MARK: - Fallback Content
 
     private func generateFallbackContent(emotion: DreamEmotion) -> DreamContent {
-        let artStyle = UserPreferences.shared.artStyle
-        let poems = fallbackPoems(emotion: emotion, style: artStyle)
+        let poems = fallbackPoems(emotion: emotion, style: UserPreferences.shared.currentSkill.legacyArtStyle)
 
         let questions: [String] = [
             "在这个梦中，什么让你感到最安心？",
@@ -328,23 +330,25 @@ final class AIService {
     // MARK: - Image Prompt
 
     private func buildStoryImagePrompt(scenes: [String], emotion: DreamEmotion) -> String {
-        let artStyle = UserPreferences.shared.artStyle
+        let skill = UserPreferences.shared.currentSkill
+        let artStyle = skill.legacyArtStyle
         let stylePrefix = getStylePrefix(for: artStyle)
         let emotionDescription = getEmotionDescription(for: emotion, style: artStyle)
         let styleSuffix = getStyleSuffix(for: artStyle)
 
         let scenesText = scenes.enumerated().map { "Scene \($0 + 1): \($1)" }.joined(separator: ". ")
 
-        return "Comic panel layout with \(scenes.count) panels showing a story sequence. \(scenesText). \(stylePrefix), \(emotionDescription), \(styleSuffix), manga storyboard style, clear panel divisions, dreamlike quality, no text, no watermark"
+        return "Comic panel layout with \(scenes.count) panels showing a story sequence. \(scenesText). \(stylePrefix), \(emotionDescription), \(styleSuffix), \(skill.imagePromptGuide), manga storyboard style, clear panel divisions, dreamlike quality, no text, no watermark"
     }
 
     private func buildImagePrompt(transcript: String, emotion: DreamEmotion) -> String {
-        let artStyle = UserPreferences.shared.artStyle
+        let skill = UserPreferences.shared.currentSkill
+        let artStyle = skill.legacyArtStyle
         let stylePrefix = getStylePrefix(for: artStyle)
         let emotionDescription = getEmotionDescription(for: emotion, style: artStyle)
         let styleSuffix = getStyleSuffix(for: artStyle)
 
-        return "\(transcript). \(stylePrefix), \(emotionDescription), \(styleSuffix), dreamlike quality, no text, no watermark"
+        return "\(transcript). \(stylePrefix), \(emotionDescription), \(styleSuffix), \(skill.imagePromptGuide), \(skill.negativePromptGuide), dreamlike quality, no text, no watermark"
     }
 
     private func getStylePrefix(for style: ArtStyle) -> String {

@@ -201,6 +201,11 @@ struct DreamDetailView: View {
     private func deleteDream() {
         modelContext.delete(dream)
         try? modelContext.save()
+        Task {
+            let descriptor = FetchDescriptor<Dream>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+            let dreams = (try? modelContext.fetch(descriptor)) ?? []
+            await DreamMemoryIndexer.shared.syncDreams(dreams)
+        }
         dismiss()
     }
 }

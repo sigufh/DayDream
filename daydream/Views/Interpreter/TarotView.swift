@@ -340,7 +340,7 @@ final class TarotViewModel {
     }
 
     func performDrawing(dreams: [Dream], modelContext: ModelContext) async {
-        let cardCount = selectedSpread == .single ? 1 : selectedSpread == .threeCard ? 3 : 10
+        let cardCount = TarotService.cardCount(for: selectedSpread)
         drawingCards = TarotService.drawCards(count: cardCount, deckType: selectedDeckType)
         currentDrawingIndex = 0
 
@@ -355,20 +355,14 @@ final class TarotViewModel {
         isDrawing = false
         isInterpreting = true
 
-        // 获取解读
-        let reading = TarotService.TarotReading(
+        let finalReading = await TarotService.finalizeReading(
             cards: drawingCards,
             spread: selectedSpread,
-            interpretation: ""
+            dreams: dreams
         )
-
-        let interpretation = await TarotService.interpret(reading: reading, dreams: dreams)
-
-        let finalReading = TarotService.TarotReading(
-            cards: drawingCards,
-            spread: selectedSpread,
-            interpretation: interpretation
-        )
+        let divination = TarotService.divination(from: finalReading)
+        modelContext.insert(divination)
+        try? modelContext.save()
 
         await MainActor.run {
             isInterpreting = false

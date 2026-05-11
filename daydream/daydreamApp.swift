@@ -44,6 +44,9 @@ struct daydreamApp: App {
             ContentView()
                 .environment(appState)
                 .environment(router)
+                .task {
+                    await TarotKnowledgeIndexer.shared.ensureIndexed()
+                }
         }
         .modelContainer(sharedModelContainer)
     }

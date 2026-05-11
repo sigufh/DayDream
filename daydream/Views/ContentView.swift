@@ -81,6 +81,12 @@ struct MainContainerView: View {
                             InterpreterView()
                         }
                     }
+
+                    Tab("代理", systemImage: "sparkles.rectangle.stack.fill", value: 3) {
+                        NavigationStack {
+                            AgentView()
+                        }
+                    }
                 }
 
                 // 录音键（只在画廊根页面显示）

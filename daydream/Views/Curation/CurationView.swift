@@ -196,6 +196,8 @@ struct CurationView: View {
             isSaving = false
         }
 
+        await DreamMemoryIndexer.shared.syncDreams(fetchDreamsSnapshot())
+
         // Show success feedback
         await MainActor.run {
             showSaveSuccess = true
@@ -215,6 +217,12 @@ struct CurationView: View {
             router.resetCaptureData()
             onDismiss()
         }
+    }
+
+    @MainActor
+    private func fetchDreamsSnapshot() -> [Dream] {
+        let descriptor = FetchDescriptor<Dream>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        return (try? modelContext.fetch(descriptor)) ?? []
     }
 
     @MainActor

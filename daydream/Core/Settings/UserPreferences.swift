@@ -39,9 +39,17 @@ enum ImageModel: String, CaseIterable, Identifiable {
 final class UserPreferences {
     static let shared = UserPreferences()
 
-    var artStyle: ArtStyle {
+    var selectedSkillID: String {
         didSet {
-            UserDefaults.standard.set(artStyle.rawValue, forKey: "artStyle")
+            UserDefaults.standard.set(selectedSkillID, forKey: "selectedSkillID")
+        }
+    }
+
+    var artStyle: ArtStyle {
+        get { currentSkill.legacyArtStyle }
+        set {
+            selectedSkillID = SkillRegistry.styleSkill(for: newValue).id
+            UserDefaults.standard.set(newValue.rawValue, forKey: "artStyle")
         }
     }
 
@@ -51,12 +59,18 @@ final class UserPreferences {
         }
     }
 
+    var currentSkill: StyleSkillProfile {
+        SkillRegistry.styleSkill(for: selectedSkillID)
+    }
+
     private init() {
-        if let saved = UserDefaults.standard.string(forKey: "artStyle"),
-           let style = ArtStyle(rawValue: saved) {
-            self.artStyle = style
+        if let savedSkillID = UserDefaults.standard.string(forKey: "selectedSkillID") {
+            self.selectedSkillID = SkillRegistry.styleSkill(for: savedSkillID).id
+        } else if let savedStyle = UserDefaults.standard.string(forKey: "artStyle"),
+                  let style = ArtStyle(rawValue: savedStyle) {
+            self.selectedSkillID = SkillRegistry.styleSkill(for: style).id
         } else {
-            self.artStyle = .impressionist // Default
+            self.selectedSkillID = SkillRegistry.builtInSkills[0].id
         }
 
         if let saved = UserDefaults.standard.string(forKey: "imageModel"),
