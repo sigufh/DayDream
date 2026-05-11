@@ -6,7 +6,9 @@ struct DreamDetailView: View {
     @State private var isFlipped = false
     @State private var showSaveSuccess = false
     @State private var showPermissionAlert = false
+    @State private var showDeleteAlert = false
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
@@ -88,6 +90,18 @@ struct DreamDetailView: View {
                         }
                         .foregroundStyle(Color.deepBlueGray)
                     }
+
+                    Button {
+                        showDeleteAlert = true
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 20))
+                            Text("删除")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundStyle(Color.deepBlueGray)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, DreamSpacing.lg)
@@ -113,6 +127,14 @@ struct DreamDetailView: View {
         .toolbar(.hidden, for: .tabBar)
         .alert("需要相册权限", isPresented: $showPermissionAlert) {
             Button("确定", role: .cancel) {}
+        }
+        .alert("确认删除", isPresented: $showDeleteAlert) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                deleteDream()
+            }
+        } message: {
+            Text("删除后无法恢复")
         }
         .animation(.easeInOut(duration: 0.3), value: showSaveSuccess)
     }
@@ -174,5 +196,11 @@ struct DreamDetailView: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         dream.isFavorite.toggle()
         try? modelContext.save()
+    }
+
+    private func deleteDream() {
+        modelContext.delete(dream)
+        try? modelContext.save()
+        dismiss()
     }
 }
